@@ -24,7 +24,6 @@ module "vpc" {
   manage_default_security_group = false
 
   enable_nat_gateway = true
-  single_nat_gateway = var.disable_high_availability_nat_gateway
 
   # VPC Flow Logs
   enable_flow_log                      = true

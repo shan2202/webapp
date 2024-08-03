@@ -93,5 +93,5 @@ resource "aws_launch_template" "app" {
   lifecycle {
     ignore_changes = [image_id]
   }
-  user_data = each.key != "app" ? base64encode(templatefile("${path.module}/app-userdata.sh"),APP_BUCKET_NAME=module.app_bucket.s3_bucket_id) : base64encode(templatefile("${path.module}/web-userdata.sh"),WEB_BUCKET_NAME=module.web_bucket.s3_bucket_id)
+  user_data = each.key != "app" ? base64encode(templatefile("${path.module}/app-userdata.sh",{APP_BUCKET_NAME=module.app_bucket.s3_bucket_id})) : base64encode(templatefile("${path.module}/web-userdata.sh",{WEB_BUCKET_NAME=module.web_bucket.s3_bucket_id, APP_LB_DNS=aws_lb.app_lb["app"].dns_name}))
 }

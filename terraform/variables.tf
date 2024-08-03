@@ -8,8 +8,6 @@ variable "workspace_iam_roles" {
   }
 }
 
-variable "EXTERNAL_ID" {}
-variable "deployed_at" {}
 // Usage: export TF_VAR_EXTERNAL_ID="value"
 // Ref: https://developer.hashicorp.com/terraform/language/values/variables#environment-variables
 
@@ -67,6 +65,17 @@ variable "database_subnets" {
   description = "Private subnets for VPC"
   type        = list(string)
   default     = ["10.1.5.0/24", "10.1.6.0/24"]
+}
+
+variable "s3_config" {
+  description = "S3 Config"
+  type        = map(string)
+}
+
+# WARNING: This variable is used to force destroy S3 bucket and all objects inside it.
+variable "s3_force_destroy" {
+  type    = bool
+  default = false
 }
 
 variable "autoscaling_group" {

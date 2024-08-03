@@ -75,20 +75,21 @@ resource "aws_security_group" "mysql_database_sg" {
   description     = "${local.name_prefix}-mysql-database-sg"
   vpc_id          = module.vpc.vpc_id
 
-  ingress_with_source_security_group_id = [
-    {
-      from_port                = 3306
-      to_port                  = 3306
-      protocol                 = "tcp"
-      source_security_group_id = [aws_security_group.app[each.key].id]
-    }
-  ]
-  egress_with_cidr_blocks = [
-    {
-      from_port   = -1
-      to_port     = -1
-      protocol    = "-1"
-      cidr_blocks = "0.0.0.0/0"
-    }
-  ]
+  ingress {
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [aws_security_group.app[each.key].id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = {
+    Name = "${local.name_prefix}-db-security-group-${each.key}"
+  }
+
 }

@@ -101,23 +101,6 @@ data "aws_iam_policy_document" "application_kms_policy" {
       identifiers = ["delivery.logs.amazonaws.com"]
     }
   }
-
-  dynamic "statement" {
-    for_each = var.roles["replica_source_account_role"] != "" ? [1] : []
-
-    content {
-      sid    = "Enable Permissions for S3 Replication Role"
-      effect = "Allow"
-
-      actions   = ["kms:Encrypt"]
-      resources = ["*"]
-
-      principals {
-        type        = "AWS"
-        identifiers = [var.roles["replica_source_account_role"]]
-      }
-    }
-  }
 }
 
 ################################################################################

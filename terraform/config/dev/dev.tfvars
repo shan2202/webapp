@@ -18,6 +18,8 @@ s3_config = {
   app_bucket_name                   = "app"
 }
 
+s3_force_destroy = true
+
 load_balancer = {
   services = {
     app = {
