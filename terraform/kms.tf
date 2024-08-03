@@ -44,45 +44,6 @@ data "aws_iam_policy_document" "application_kms_policy" {
   }
 
   statement {
-    sid    = "Enable User Permissions for Svc Account"
-    effect = "Allow"
-
-    actions = ["kms:Decrypt", "kms:GenerateDataKey"]
-
-    resources = ["*"]
-
-    principals {
-      type        = "AWS"
-      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/ses-email-service-account"]
-    }
-  }
-
-  statement {
-    sid    = "Allow administration of the key"
-    effect = "Allow"
-
-    actions = [
-      "kms:Create*",
-      "kms:Describe*",
-      "kms:Enable*",
-      "kms:List*",
-      "kms:Put*",
-      "kms:Update*",
-      "kms:Revoke*",
-      "kms:Disable*",
-      "kms:Get*",
-      "kms:Delete*",
-      "kms:ScheduleKeyDeletion",
-      "kms:CancelKeyDeletion",
-      "kms:Decrypt",
-      "kms:GenerateDataKey",
-    ]
-
-    resources = ["*"]
-
-  }
-
-  statement {
     sid    = "Allow NLB access logs"
     effect = "Allow"
 
@@ -130,26 +91,4 @@ data "aws_iam_policy_document" "database_kms_policy" {
     }
   }
 
-  statement {
-    sid    = "Allow administration of the key"
-    effect = "Allow"
-
-    actions = [
-      "kms:Create*",
-      "kms:Describe*",
-      "kms:Enable*",
-      "kms:List*",
-      "kms:Put*",
-      "kms:Update*",
-      "kms:Revoke*",
-      "kms:Disable*",
-      "kms:Get*",
-      "kms:Delete*",
-      "kms:ScheduleKeyDeletion",
-      "kms:CancelKeyDeletion",
-    ]
-
-    resources = ["*"]
-
-  }
 }

@@ -58,7 +58,6 @@ resource "aws_launch_template" "app" {
   for_each               = { for k, v in var.autoscaling_group.services : k => v }
   name                   = "${local.name_prefix}-app-template-${each.key}"
   image_id               = each.value.app_base_ami
-  key_name               = "${local.name_prefix}-keypair"
   instance_type          = each.value.instance_type
   update_default_version = true
 

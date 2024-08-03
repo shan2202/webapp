@@ -8,7 +8,6 @@ vpc_cidr = "172.25.0.0/16"
 
 private_subnets  = ["172.25.1.0/24", "172.25.2.0/24"]
 public_subnets   = ["172.25.3.0/24", "172.25.4.0/24"]
-database_subnets = ["172.25.5.0/24", "172.25.6.0/24"]
 
 vpc_azs         = ["ap-southeast-1a", "ap-southeast-1b"]
 
@@ -45,18 +44,18 @@ autoscaling_group = {
 
   services = {
     app = {
-      app_desired_capacity = "1"
-      app_max_size         = "1"
-      app_min_size         = "1"
-      app_base_ami         = "ami-0c38b837cd80f13bb"
+      app_desired_capacity = "0"
+      app_max_size         = "0"
+      app_min_size         = "0"
+      app_base_ami         = "ami-009c9406091cbd65a"
       instance_type        = "t2.micro"
       volume_size          = "10"
     },
     web = {
-      app_desired_capacity = "1"
-      app_max_size         = "1"
-      app_min_size         = "1"
-      app_base_ami         = "ami-0c38b837cd80f13bb"
+      app_desired_capacity = "0"
+      app_max_size         = "0"
+      app_min_size         = "0"
+      app_base_ami         = "ami-009c9406091cbd65a"
       instance_type        = "t2.micro"
       volume_size          = "10"
     }

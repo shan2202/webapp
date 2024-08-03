@@ -17,7 +17,7 @@ resource "aws_db_instance" "rds_mysqldb" {
   storage_type                    = "gp2"
   engine                          = "mysql"
   engine_version                  = "5.7"
-  instance_class                  = "db.t2.micro"
+  instance_class                  = "db.t3.micro"
   multi_az                        = "false"
   username                        = data.aws_ssm_parameter.DBUSER.value
   password                        = data.aws_ssm_parameter.DBPASSWORD.value
@@ -31,7 +31,6 @@ resource "aws_db_instance" "rds_mysqldb" {
   monitoring_interval             = 60
   monitoring_role_arn             = aws_iam_role.enhancedmonitoring_role.arn
   parameter_group_name            = aws_db_parameter_group.mysqldb_param_group.name
-  performance_insights_enabled    = "true"
   skip_final_snapshot             = "true"
 }
 
@@ -40,7 +39,7 @@ resource "aws_db_parameter_group" "mysqldb_param_group" {
   description = "${local.name_prefix}-mysqlDB-Paramgroup"
   family      = "mysql5.7"
   parameter {
-    name  = "rds.force_ssl"
+    name  = "require_secure_transport"
     value = "1"
   }
 }
@@ -56,7 +55,7 @@ resource "aws_ssm_parameter" "mysql_param" {
 resource "aws_db_subnet_group" "mysql_subnet_group" {
   description = "${local.name_prefix}-subnetgroup"
   name        = "${local.name_prefix}-dbsubnetgroup"
-  subnet_ids  = module.vpc.database_subnets
+  subnet_ids  = module.vpc.private_subnets
 }
 
 resource "aws_iam_role" "enhancedmonitoring_role" {
