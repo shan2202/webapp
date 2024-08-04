@@ -41,7 +41,8 @@ resource "aws_iam_role" "ec2_app_access_role" {
     "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess",
     "arn:aws:iam::aws:policy/SecretsManagerReadWrite",
     "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
-    "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+    "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+    "arn:aws:iam::aws:policy/ElasticLoadBalancingReadOnly"
   ]
 }
 
@@ -92,5 +93,5 @@ resource "aws_launch_template" "app" {
   lifecycle {
     ignore_changes = [image_id]
   }
-  user_data = each.key != "app" ? base64encode(templatefile("${path.module}/app-userdata.sh",{APP_BUCKET_NAME=module.app_bucket.s3_bucket_id})) : base64encode(templatefile("${path.module}/web-userdata.sh",{WEB_BUCKET_NAME=module.web_bucket.s3_bucket_id, APP_LB_DNS=aws_lb.app_lb["app"].dns_name}))
+  user_data = each.key != "app" ? filebase64("${path.module}/scripts/web-launch.sh") : filebase64("${path.module}/scripts/app-launch.sh")
 }

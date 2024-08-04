@@ -1,5 +1,5 @@
 data "aws_ssm_parameter" "DBNAME" {
-  name = "/${var.project_name}/${var.environment}/DBNAME"
+  name = "/${var.project_name}/${var.environment}/DBIDENTIFIER"
 }
 data "aws_ssm_parameter" "DBUSER" {
   name = "/${var.project_name}/${var.environment}/DBUSER"
@@ -16,7 +16,7 @@ resource "aws_db_instance" "rds_mysqldb" {
   allocated_storage               = 10
   storage_type                    = "gp2"
   engine                          = "mysql"
-  engine_version                  = "5.7"
+  engine_version                  = "5.7.44-rds.20240529"
   instance_class                  = "db.t3.micro"
   multi_az                        = "false"
   username                        = data.aws_ssm_parameter.DBUSER.value
@@ -38,10 +38,6 @@ resource "aws_db_instance" "rds_mysqldb" {
 resource "aws_db_parameter_group" "mysqldb_param_group" {
   description = "${local.name_prefix}-mysqlDB-Paramgroup"
   family      = "mysql5.7"
-  parameter {
-    name  = "require_secure_transport"
-    value = "1"
-  }
 }
 
 resource "aws_ssm_parameter" "mysql_param" {

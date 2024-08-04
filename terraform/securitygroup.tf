@@ -43,15 +43,8 @@ resource "aws_security_group" "app" {
   vpc_id      = module.vpc.vpc_id
 
   ingress {
-    from_port       = 443
-    to_port         = 443
-    protocol        = "tcp"
-    security_groups = [aws_security_group.app_lb[each.key].id]
-  }
-
-  ingress {
-    from_port       = 80
-    to_port         = 80
+    from_port       = each.value.port
+    to_port         = each.value.port
     protocol        = "tcp"
     security_groups = [aws_security_group.app_lb[each.key].id]
   }

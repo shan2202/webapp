@@ -24,14 +24,14 @@ load_balancer = {
     app = {
       elb_type    = "application"
       is_internal = "true"
-      port        = 80
+      port        = 4000
       public_port = 80
       protocol    = "HTTP"
     },
     web = {
       elb_type    = "application"
       is_internal = "false"
-      port        = 80
+      port        = 8000
       public_port = 80
       protocol    = "HTTP"
     }
@@ -44,18 +44,18 @@ autoscaling_group = {
 
   services = {
     app = {
-      app_desired_capacity = "0"
-      app_max_size         = "0"
-      app_min_size         = "0"
-      app_base_ami         = "ami-009c9406091cbd65a"
+      app_desired_capacity = "1"
+      app_max_size         = "1"
+      app_min_size         = "1"
+      app_base_ami         = "ami-0adcfe5c27f7c9acf"
       instance_type        = "t2.micro"
       volume_size          = "10"
     },
     web = {
-      app_desired_capacity = "0"
-      app_max_size         = "0"
-      app_min_size         = "0"
-      app_base_ami         = "ami-009c9406091cbd65a"
+      app_desired_capacity = "1"
+      app_max_size         = "1"
+      app_min_size         = "1"
+      app_base_ami         = "ami-0adcfe5c27f7c9acf"
       instance_type        = "t2.micro"
       volume_size          = "10"
     }
