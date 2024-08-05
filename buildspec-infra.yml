@@ -29,4 +29,8 @@ phases:
 
 artifacts:
   files:
-    - output_plan_$TARGET_ENV.tfplan
+    - terraform/output_plan_$TARGET_ENV.tfplan
+reports:
+  terraform-plan-reports:
+    files:
+    - "./terraform/output_plan_$TARGET_ENV.tfplan"
