@@ -344,6 +344,84 @@ Resources:
         Type: CODEPIPELINE
         BuildSpec: buildspec-validate.yaml
 
+  DependencyScanProject:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: !Sub ${AWS::StackName}-DependencyScan
+      Description: !Ref ProjectName
+      EncryptionKey: !Ref PipelineKMSKey
+      Artifacts: 
+        Type: CODEPIPELINE
+      Environment: 
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: True
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: S3_BUCKET
+            Value: !Ref ArtifactBucket
+          - Name: TARGET_ENV
+            Value: !Ref Stage
+          - Name: PROJECT_NAME
+            Value: !Ref ProjectName
+      ServiceRole: !Ref CodeBuildExecutionRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec-dependencyscan.yaml
+
+  SASTScanProject:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: !Sub ${AWS::StackName}-SASTScan
+      Description: !Ref ProjectName
+      EncryptionKey: !Ref PipelineKMSKey
+      Artifacts: 
+        Type: CODEPIPELINE
+      Environment: 
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: True
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: S3_BUCKET
+            Value: !Ref ArtifactBucket
+          - Name: TARGET_ENV
+            Value: !Ref Stage
+          - Name: PROJECT_NAME
+            Value: !Ref ProjectName
+      ServiceRole: !Ref CodeBuildExecutionRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec-sast.yaml
+
+  SecretScanProject:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: !Sub ${AWS::StackName}-SecretScan
+      Description: !Ref ProjectName
+      EncryptionKey: !Ref PipelineKMSKey
+      Artifacts: 
+        Type: CODEPIPELINE
+      Environment: 
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: True
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: S3_BUCKET
+            Value: !Ref ArtifactBucket
+          - Name: TARGET_ENV
+            Value: !Ref Stage
+          - Name: PROJECT_NAME
+            Value: !Ref ProjectName
+      ServiceRole: !Ref CodeBuildExecutionRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec-secretscan.yaml
+
   AppDeployProject:
     Type: AWS::CodeBuild::Project
     Properties: 
@@ -369,11 +447,10 @@ Resources:
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec-deploy.yaml
-  # Build AppAssets on Dev and Qa only
   InfraDeployProject:
     Type: AWS::CodeBuild::Project
     Properties: 
-      Name: !Sub ${AWS::StackName}-AppDeployment
+      Name: !Sub ${AWS::StackName}-InfraDeployment
       Description: !Ref ProjectName
       EncryptionKey: !Ref PipelineKMSKey
       Artifacts: 
@@ -570,9 +647,9 @@ Resources:
             RunOrder: 1
             OutputArtifacts:
               - Name: source_output_artifacts
-        - Name: Validate
+        - Name: SecurityScans
           Actions:
-          - Name: ValidateInfra
+          - Name: IaCSecurityScan
             ActionTypeId:
               Category: Build
               Owner: AWS
@@ -585,6 +662,45 @@ Resources:
             Configuration:
               ProjectName: !Ref InfraValidateProject
             RunOrder: 1
+          - Name: DependencyScan
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Version: 1
+              Provider: CodeBuild
+            OutputArtifacts:
+              - Name: dependency-output-artifacts
+            InputArtifacts:
+              - Name: source_output_artifacts
+            Configuration:
+              ProjectName: !Ref DependencyScanProject
+            RunOrder: 1   
+          - Name: SASTScan
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Version: 1
+              Provider: CodeBuild
+            OutputArtifacts:
+              - Name: sast-scan-output-artifacts
+            InputArtifacts:
+              - Name: source_output_artifacts
+            Configuration:
+              ProjectName: !Ref SASTScanProject
+            RunOrder: 1     
+          - Name: SecretScanning
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Version: 1
+              Provider: CodeBuild
+            OutputArtifacts:
+              - Name: secret-scan-output-artifacts
+            InputArtifacts:
+              - Name: source_output_artifacts
+            Configuration:
+              ProjectName: !Ref SecretScanProject
+            RunOrder: 1    
         # Create build from the source code and upload output-artifacts to S3 Bucket
         - Name: Build
           Actions:
@@ -613,7 +729,7 @@ Resources:
               - Name: source_output_artifacts
             Configuration:
                 ProjectName: !Ref AppBuildProject
-            RunOrder: 2
+            RunOrder: 1
         - Name: Deploy
           Actions:
           - Name: Approval
@@ -633,11 +749,11 @@ Resources:
               Version: 1
               Provider: CodeBuild
             OutputArtifacts:
-              - Name: deploy-output-artifacts-app
+              - Name: deploy-infra-output-artifacts-app
             InputArtifacts:
               - Name: build-output-artifacts-app
             Configuration:
-              ProjectName: !Ref AppDeployProject
+              ProjectName: !Ref InfraDeployProject
             RunOrder: 2
           - Name: AppDeploy
             ActionTypeId:

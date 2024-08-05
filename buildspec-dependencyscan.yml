@@ -1,0 +1,29 @@
+version: 0.2
+env:
+  secrets-manager:
+    SNYK_TOKEN: scb/dev/snyk:token
+    SNYK_ORG: scb/dev/snyk:Organization
+phases:
+  install:
+    - npm install -g snyk
+    - npm install snyk-to-html -g
+    - snyk config set api=$SNYK_TOKEN
+
+  build:
+    - snyk test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-opensource.html
+    - snyk iac test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-iac.html
+    - snyk code test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-code.html
+
+artifacts:
+  files:
+    - '**/*'
+reports:
+  snyk-opensource-reports:
+    files:
+      - "./reports/results-opensource.html"
+  snyk-iac-reports:
+    files:
+      - "./reports/results-iac.html"
+  snyk-code-reports:
+    files:
+      - "./reports/results-code.html"
