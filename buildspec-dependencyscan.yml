@@ -14,22 +14,11 @@ phases:
 
   build:
     commands:
-      - snyk test --command=python3 --skip-unresolved=true --file=ApplicationLayer/requirements.txt --org=$SNYK_ORG --severity-threshold=high --dev --json | snyk-to-html -o reports/synk-results-ApplicationLayer.html
-      - snyk test --command=python3 --skip-unresolved=true --file=WebLayer/requirements.txt --org=$SNYK_ORG --severity-threshold=high --dev --json | snyk-to-html -o reports/synk-results-WebLayer.html
-      - snyk iac test --severity-threshold=high --org=$SNYK_ORG  --report --json | snyk-to-html -o reports/results-iac.html
-      - snyk code test --severity-threshold=high --org=$SNYK_ORG --report --json | snyk-to-html -o reports/results-code.html
+      - snyk test --command=python3 --skip-unresolved=true --file=ApplicationLayer/requirements.txt --org=$SNYK_ORG --severity-threshold=high --dev --report 
+      - snyk test --command=python3 --skip-unresolved=true --file=WebLayer/requirements.txt --org=$SNYK_ORG --severity-threshold=high --dev --report 
+      - snyk iac test --severity-threshold=high --org=$SNYK_ORG  --report 
+      - snyk code test --severity-threshold=high --org=$SNYK_ORG --report 
 
 artifacts:
   files:
     - '**/*'
-reports:
-  snyk-opensource-reports:
-    files:
-      - ".reports/synk-results-ApplicationLayer.html"
-      - ".reports/synk-results-WebLayer.html"
-  snyk-iac-reports:
-    files:
-      - "./reports/results-iac.html"
-  snyk-code-reports:
-    files:
-      - "./reports/results-code.html"
