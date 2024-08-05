@@ -14,9 +14,12 @@ phases:
 
   build:
     commands:
-      - snyk test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-opensource.html
-      - snyk iac test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-iac.html
-      - snyk code test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-code.html
+      # - snyk test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-opensource.html
+      # - snyk iac test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-iac.html
+      # - snyk code test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-code.html
+      - snyk test --org=$SNYK_ORG --project-name=webapp 
+      - snyk iac test --org=$SNYK_ORG --project-name=webapp 
+      - snyk code test --org=$SNYK_ORG --project-name=webapp 
 
 artifacts:
   files:

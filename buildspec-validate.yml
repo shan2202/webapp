@@ -19,10 +19,10 @@ phases:
       python: 3.9
       golang: 1.14
     commands:
-      - "curl -s -qL -o terraform.zip https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+      - "curl -s -qL -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
       - ls
-      - "unzip -o terraform.zip"
-      - "mv terraform /bin"
+      - "unzip -o /tmp/terraform.zip"
+      - "mv /tmp/terraform /bin"
       - "rm terraform.zip"
       - "yum update -y"
       - "yum install -y curl jq awscli"

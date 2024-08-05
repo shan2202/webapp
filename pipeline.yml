@@ -273,6 +273,7 @@ Resources:
               - codepipeline:GetPipelineExecution
               - codepipeline:ListPipelineExecutions
               - codepipeline:StartPipelineExecution
+              - codebuild:CreateReportGroup
               - ssm:*
             Resource: '*'
           - Effect: Allow
