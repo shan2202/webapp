@@ -25,10 +25,10 @@ phases:
     commands:
       - export Project=webapp 
       - export SONAR_HOST_URL=$HOST
-      - pysonar-scanner -Dsonar.token=$TOKEN -Dsonar.projectKey=$Project -Dsonar.organization=$Organization
+      - pysonar-scanner -Dsonar.token=$TOKEN -Dsonar.projectKey=$Project -Dsonar.organization=$Organization -Dsonar.exclusions=".git/**,**/templates/**,**terraform/**,**/reports/**,**/scripts/**"
       - sleep 5
       - curl https://sonarcloud.io/api/qualitygates/project_status?projectKey=$Project >reports/result.json
-      - cat result.json
+      - cat reports/result.json
       - if [ $(jq -r '.projectStatus.status' result.json) = ERROR ] ; then $CODEBUILD_BUILD_SUCCEEDING -eq 0 ;fi
 
 artifacts:
