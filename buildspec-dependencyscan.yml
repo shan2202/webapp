@@ -13,9 +13,10 @@ phases:
       - snyk config set api=$SNYK_TOKEN
 
   build:
-    - snyk test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-opensource.html
-    - snyk iac test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-iac.html
-    - snyk code test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-code.html
+    commands:
+      - snyk test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-opensource.html
+      - snyk iac test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-iac.html
+      - snyk code test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-code.html
 
 artifacts:
   files:
