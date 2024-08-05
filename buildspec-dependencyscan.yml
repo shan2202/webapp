@@ -14,12 +14,10 @@ phases:
 
   build:
     commands:
-      # - snyk test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-opensource.html
-      # - snyk iac test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-iac.html
-      # - snyk code test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-code.html
-      - snyk test --all-projects --severity-threshold=high --org=$SNYK_ORG  
-      - snyk iac test --all-projects --severity-threshold=high --org=$SNYK_ORG 
-      - snyk code test --all-projects --severity-threshold=high --org=$SNYK_ORG 
+      - snyk test --command=python3 --skip-unresolved=true --file=ApplicationLayer/requirements.txt --org=$SNYK_ORG --severity-threshold=high --dev
+      - snyk test --command=python3 --skip-unresolved=true --file=WebLayer/requirements.txt --org=$SNYK_ORG --severity-threshold=high --dev
+      - snyk iac test --severity-threshold=high --org=$SNYK_ORG  --report 
+      - snyk code test --severity-threshold=high --org=$SNYK_ORG --report
 
 artifacts:
   files:
