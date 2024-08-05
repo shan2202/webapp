@@ -1,0 +1,660 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: The CloudFormation template for the backend CodePipeline.
+
+Parameters:
+  Stage:
+    Description: Environment Type.
+    Type: String
+    Default: dev
+    AllowedValues:
+        - dev
+        - alpha
+        - prod
+        - qa
+        - preprod
+        - sandbox
+    ConstraintDescription: Must specify Stage dev, sandbox, qa, alpha, preprod, prod
+  ProjectName:
+    Type: String
+    Default: scb
+  GithubUserName:
+    Type: String
+    Default: shan2202
+  RepositoryName:
+    Type: String
+    Default: webapp
+  AppRepositoryName:
+    Type: String
+    Default: webapp
+  GithubBranch:
+    Type: String
+    Default: develop
+  AppGithubBranch:
+    Type: String
+    Default: develop
+  GitHubSecretName: 
+    Description: The secret to connect the GitHub account 
+    Type: String 
+    Default: github-auth-secrets
+  GitHubWebhookSecret: 
+    Description: The webhook token to connect of the GitHub account 
+    Type: String 
+    Default: github-webhook-token
+  GitHubPersonalAccessToken: 
+    Description: The oauth token to connect to the GitHub account 
+    Type: String
+    Default: github-oauth-token
+  S3BucketArtifact:
+    Description: S3 Bucket, which will hold the artifacts
+    Type: String
+    Default: app-build-artifacts
+  AppBuildSpecFile:
+    Description: Buildspec file to use for the build
+    Type: String
+    Default: buildspec_app.yml
+  WebBuildSpecFile:
+    Description: Buildspec file to use for the static asset build
+    Type: String
+    Default: buildspec_web.yml
+  BuildNotificationEmail:
+    Description: Email ID to which the build notifications has to be sent
+    Type: String
+  ApprovalNotificationEmail:
+    Description: Email ID to which the approval notifications has to be sent
+    Type: String
+
+Conditions:
+  isDev: !Equals [!Ref Stage, dev]
+  isSandbox: !Equals [!Ref Stage, sandbox]
+  isPreprod: !Equals [!Ref Stage, preprod]
+  isProd: !Equals [!Ref Stage, prod]
+  isQa: !Equals [!Ref Stage, qa]
+  isAlpha: !Equals [!Ref Stage, alpha]
+
+Resources:
+  # Create Access Role for CodePipeLine
+  PipeLineExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${AWS::StackName}-CodePipelineRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+
+  PipelinePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-CodePipelinePolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - codepipeline:*
+              - iam:ListRoles
+              - cloudformation:Describe*
+              - cloudFormation:List*
+              - codecommit:List*
+              - codecommit:Get*
+              - codecommit:GitPull
+              - codecommit:UploadArchive
+              - codecommit:CancelUploadArchive
+              - codebuild:BatchGetBuilds
+              - codebuild:StartBuild
+              - cloudformation:CreateStack
+              - cloudformation:DeleteStack
+              - cloudformation:DescribeStacks
+              - cloudformation:UpdateStack
+              - cloudformation:CreateChangeSet
+              - cloudformation:DeleteChangeSet
+              - cloudformation:DescribeChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:SetStackPolicy
+              - cloudformation:ValidateTemplate
+              - iam:PassRole
+              - s3:ListAllMyBuckets
+              - s3:GetBucketLocation
+            Resource:
+              - "*"
+          - Effect: Allow
+            Action:
+              - kms:*
+            Resource: 
+              - "*"
+          - Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetBucketPolicy
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+              - !Join ["", ["arn:aws:s3:::", !Ref ArtifactBucket, "/*"]]
+              - !Join ["", ["arn:aws:s3:::", !Ref ArtifactBucket]]
+          - Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+              - lambda:ListFunctions
+            Resource:
+              - "*"
+      Roles:
+        - !Ref PipeLineExecutionRole
+
+  # Create Access Role for CodeBuild
+  CodeBuildExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${AWS::StackName}-CodeBuildRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+              AWS:
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - sts:AssumeRole
+      Path: /
+
+  PipelineKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+        Description: Pipeline Key
+        Enabled: true
+        EnableKeyRotation: true
+        KeyPolicy:
+          Version: "2012-10-17"
+          Id: !Sub ${ProjectName}-${Stage}
+          Statement:
+            - Sid: "Enable IAM User Permissions"
+              Effect: "Allow"
+              Principal:
+                AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+              Action: "kms:*"
+              Resource: "*"
+            - Sid: "Enable SNS Topic Encryption"
+              Effect: "Allow"
+              Principal:
+                Service: "events.amazonaws.com"
+              Action:
+                - "kms:Decrypt"
+                - "kms:GenerateDataKey*"
+                - "sns:Publish"
+              Resource: "*"
+    
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                KMSMasterKeyID: !Ref PipelineKMSKey
+                SSEAlgorithm: aws:kms
+        BucketName: !Sub "${ProjectName}-${S3BucketArtifact}-${Stage}"
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: False
+          BlockPublicPolicy: False
+          IgnorePublicAcls: False
+          RestrictPublicBuckets: False
+        VersioningConfiguration:
+          Status: Enabled
+        LifecycleConfiguration:
+          Rules:
+            - Id: DeleteObjectsAfter6Months
+              Status: Enabled
+              ExpirationInDays: 180
+              NoncurrentVersionExpiration:
+                NoncurrentDays: 14
+    
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+        Bucket: !Ref ArtifactBucket
+        PolicyDocument:
+          Statement:
+            - Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:ListBucket
+              Effect: Allow
+              Resource:
+                - !Sub arn:aws:s3:::${ArtifactBucket}
+                - !Sub arn:aws:s3:::${ArtifactBucket}/*
+              Principal: "*"
+            -
+              Sid: "AllowSSLRequestsOnly"
+              Action:
+                - "s3:*"
+              Effect: "Deny"
+              Resource:
+                - !Sub arn:aws:s3:::${ArtifactBucket}
+                - !Sub arn:aws:s3:::${ArtifactBucket}/*
+              Condition:
+                Bool:
+                  aws:SecureTransport: "false"
+              Principal: "*"
+
+  BuildProjectPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub ${AWS::StackName}-CodeBuildPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetBucketPolicy
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+              - !Join ["", ["arn:aws:s3:::", !Ref ArtifactBucket, "/*"]]
+              - !Join ["", ["arn:aws:s3:::", !Ref ArtifactBucket]]
+          - Effect: Allow
+            Action:
+              - kms:*
+            Resource: 
+              - "*"
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+            Resource:
+              - !Join ["", ["arn:aws:secretsmanager:",!Ref "AWS::Region",":",!Ref "AWS::AccountId",":secret:*"]]
+          - Effect: Allow
+            Action:
+              - iam:PassRole
+              - ec2:*
+              - codepipeline:GetPipelineExecution
+              - codepipeline:ListPipelineExecutions
+              - codepipeline:StartPipelineExecution
+              - ssm:*
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - logs:Describe*
+              - logs:Get*
+              - logs:List*
+              - logs:StartQuery
+              - logs:FilterLogEvents
+              - logs:StopQuery
+            Resource: arn:aws:logs:*:*:*
+      Roles:
+        - !Ref CodeBuildExecutionRole
+
+  # Create the BuildProject with required Build information
+  InfraBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: !Sub ${AWS::StackName}-InfraBuild
+      Description: !Ref ProjectName
+      EncryptionKey: !Ref PipelineKMSKey
+      Artifacts: 
+        Type: CODEPIPELINE
+      Environment: 
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: True
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: S3_BUCKET
+            Value: !Ref ArtifactBucket
+          - Name: TARGET_ENV
+            Value: !Ref Stage
+          - Name: PROJECT_NAME
+            Value: !Ref ProjectName
+      ServiceRole: !Ref CodeBuildExecutionRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec-infra.yaml
+
+  # Create the BuildProject with required Build information
+  InfraValidateProject:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: !Sub ${AWS::StackName}-InfraValidate
+      Description: !Ref ProjectName
+      EncryptionKey: !Ref PipelineKMSKey
+      Artifacts: 
+        Type: CODEPIPELINE
+      Environment: 
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: True
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: S3_BUCKET
+            Value: !Ref ArtifactBucket
+          - Name: TARGET_ENV
+            Value: !Ref Stage
+          - Name: PROJECT_NAME
+            Value: !Ref ProjectName
+      ServiceRole: !Ref CodeBuildExecutionRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec-validate.yaml
+
+  # Build AppAssets on Dev and Qa only
+  AppDeployProject:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: !Sub ${AWS::StackName}-AppDeployment
+      Description: !Ref ProjectName
+      EncryptionKey: !Ref PipelineKMSKey
+      Artifacts: 
+        Type: CODEPIPELINE
+      Environment: 
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: True
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: ROLE
+            Value: !Sub ${ProjectName}-CodeBuildRole
+          - Name: TARGET_ENV
+            Value: !Ref Stage
+      ServiceRole: !Ref CodeBuildExecutionRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec-deploy.yaml
+
+  AppBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Artifacts: 
+        Type: CODEPIPELINE
+      Environment: 
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        Image: aws/codebuild/standard:4.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: True
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: TARGET_ENV
+            Value: !Ref Stage
+      Name: !Sub ${AWS::StackName}-AppBuild
+      ServiceRole: !Ref CodeBuildExecutionRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: !Ref AppBuildSpecFile
+
+  WebBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Artifacts: 
+        Type: CODEPIPELINE
+      Environment: 
+        ComputeType: BUILD_GENERAL1_LARGE
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: True
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+            - Name: PIPELINE_NAME
+              Value: !Sub ${AWS::StackName}      
+      Name: !Sub ${AWS::StackName}-WebBuild
+      ServiceRole: !Ref CodeBuildExecutionRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: !Ref WebBuildSpecFile
+
+
+  # SNS Email topic for the BE Build pipeline
+  AutumnBuildSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !Ref PipelineKMSKey
+      Subscription:
+        - Endpoint: !Ref BuildNotificationEmail
+          Protocol: email
+      TopicName: !Sub ${AWS::StackName}-topic
+  
+  AutumnBuildSNSTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AutumnBuildSNSTopic
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: '*'
+            Action: sns:Publish
+            Resource: !Ref AutumnBuildSNSTopic
+
+  AutumnApprovalSNSTopic:
+    Condition: isProd
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !Ref PipelineKMSKey
+      Subscription:
+        - Endpoint: !Ref ApprovalNotificationEmail
+          Protocol: email
+      TopicName: !Sub ${AWS::StackName}-approval-topic
+  
+  AutumnApprovalSNSTopicPolicy:
+    Condition: isProd
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref AutumnApprovalSNSTopic
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: '*'
+            Action: sns:Publish
+            Resource: !Ref AutumnApprovalSNSTopic
+
+  #Event Rule in Cloudwtch to monitor the pipeline events and send notifications
+  PipelineEventRule: 
+    Type: "AWS::Events::Rule"
+    Properties: 
+      Description: !Join ['-', ['Pipeline Event for app-pipeline',!Ref Stage]]
+      Name: !Sub ${AWS::StackName}-event
+      EventPattern: 
+        source:
+        - aws.codepipeline
+        detail-type:
+        - CodePipeline Pipeline Execution State Change
+        detail:
+          state:
+            - STARTED
+            - SUCCEEDED
+            - RESUMED
+            - CANCELED
+            - SUPERSEDED
+          pipeline:
+          - !Ref CodePipeLine 
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: 
+            !Ref AutumnBuildSNSTopic
+          Id: !Sub ${AWS::StackName}-topic
+          InputTransformer:
+            InputTemplate: '"The Pipeline <pipeline> has been <status> on <time>."'
+            InputPathsMap:
+              pipeline: "$.detail.pipeline" 
+              status: "$.detail.state"
+              time: "$.time"
+
+  PipelineStageEventRule: 
+    Type: "AWS::Events::Rule"
+    Properties: 
+      Description: !Join ['-', ['Pipeline Event for app-pipeline-action',!Ref Stage]]
+      Name: !Sub ${AWS::StackName}-pipelineaction-event
+      EventPattern: 
+        source:
+        - aws.codepipeline
+        detail-type:
+        - CodePipeline Action Execution State Change
+        detail:
+          state:
+          - FAILED
+          pipeline:
+          - !Ref CodePipeLine 
+      State: "ENABLED"
+      Targets: 
+        - 
+          Arn: 
+            !Ref AutumnBuildSNSTopic
+          Id: !Sub ${AWS::StackName}-topic
+          InputTransformer:
+            InputTemplate: '"The Pipeline <pipeline> has been <status> at the <stage> stage on <time> during <action> action . Go to https://console.aws.amazon.com/codepipeline/home?region=<region>#/view/<pipeline>" '
+            InputPathsMap:
+              pipeline: "$.detail.pipeline" 
+              status: "$.detail.state"
+              stage: "$.detail.stage"
+              action: "$.detail.action"
+              region: "$.region"
+              time: "$.time"
+
+  PipelineWebhook: 
+    Type: AWS::CodePipeline::Webhook 
+    Properties: 
+      Name: !Sub ${AWS::StackName}-Webhook 
+      Authentication: GITHUB_HMAC 
+      AuthenticationConfiguration: 
+        SecretToken: !Sub "{{resolve:secretsmanager:${GitHubSecretName}:SecretString:${GitHubWebhookSecret}}}" 
+      Filters: 
+        - JsonPath: "$.ref" 
+          MatchEquals: refs/heads/{Branch} 
+      TargetPipeline: !Ref CodePipeLine 
+      TargetAction: Checkout 
+      TargetPipelineVersion: !GetAtt CodePipeLine.Version 
+      RegisterWithThirdParty: true 
+
+
+  # Create CodePipeline with 4 stages (Source, DBMigration, BuildApp and DeployApp)
+  CodePipeLine:
+    Type: AWS::CodePipeline::Pipeline
+    DependsOn: PipelinePolicy
+    Properties: 
+      Name: !Sub ${AWS::StackName}
+      RestartExecutionOnUpdate: False
+      RoleArn: 
+        Fn::GetAtt: [ PipeLineExecutionRole, Arn ]
+      Stages:
+        # Download source code from Github Repo to source_output_artifacts path in S3 Bucket
+        - Name: Source
+          Actions: 
+          - Name: Checkout
+            ActionTypeId: 
+              Category: Source
+              Owner: ThirdParty
+              Provider: GitHub
+              Version: 1
+            Configuration:
+              Repo: !Ref RepositoryName
+              Branch: !Ref GithubBranch
+              Owner: !Ref GithubUserName
+              PollForSourceChanges: "false"
+              OAuthToken: !Sub "{{resolve:secretsmanager:${GitHubSecretName}:SecretString:${GitHubPersonalAccessToken}}}"
+            RunOrder: 1
+            OutputArtifacts:
+              - Name: source_output_artifacts
+        - Name: Validate
+          Actions:
+          - Name: ValidateInfra
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Version: 1
+              Provider: CodeBuild
+            OutputArtifacts:
+              - Name: infra-validate-output-artifacts
+            InputArtifacts:
+              - Name: source_output_artifacts
+            Configuration:
+              ProjectName: !Ref InfraValidateProject
+            RunOrder: 1
+        # Create build from the source code and upload output-artifacts to S3 Bucket
+        - Name: Build
+          Actions:
+          - Name: BuildInfra
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Version: 1
+              Provider: CodeBuild
+            OutputArtifacts:
+              - Name: infra-build-output-artifacts
+            InputArtifacts:
+              - Name: source_output_artifacts
+            Configuration:
+               ProjectName: !Ref InfraBuildProject
+            RunOrder: 1
+          - Name: BuildApp
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Version: 1
+              Provider: CodeBuild
+            OutputArtifacts:
+              - Name: build-output-artifacts-app
+            InputArtifacts:
+              - Name: source_output_artifacts
+            Configuration:
+                ProjectName: !Ref AppBuildProject
+            RunOrder: 2
+          - Name: BuildWeb
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Version: 1
+              Provider: CodeBuild
+            OutputArtifacts:
+              - Name: build-output-artifacts-web
+            InputArtifacts:
+              - Name: source_output_artifacts
+            Configuration:
+                ProjectName: !Ref WebBuildProject
+            RunOrder: 2
+        - Name: Deploy
+          Actions:
+          - Name: Approval
+            ActionTypeId:
+              Category: Approval
+              Owner: AWS
+              Version: "1"
+              Provider: Manual
+            Configuration:
+              CustomData: Approval for Prod Deploy
+            NotificationArn: !Ref AutumnApprovalSNSTopic
+            RunOrder: 1 
+          - Name: Deploy
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Version: 1
+              Provider: CodeBuild
+            OutputArtifacts:
+              - Name: deploy-output-artifacts-app
+            InputArtifacts:
+              - Name: build-output-artifacts-app
+            Configuration:
+              ProjectName: !Ref AppDeployProject
+            RunOrder: 2
+
+      ArtifactStores: 
+        -
+          Region: ap-southeast-1
+          ArtifactStore:
+            Location: !Sub ${ArtifactBucket}
+            Type: S3
+            EncryptionKey:
+                Id: !Ref PipelineKMSKey
+                Type: KMS

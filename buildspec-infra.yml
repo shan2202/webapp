@@ -1,0 +1,30 @@
+version: 0.2
+
+env:
+    variables:
+      TF_VERSION: "1.7.2"
+
+phases:
+  pre_build:
+    commands:
+      - echo install Terraform...
+      - "curl -s -qL -o terraform.zip https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+      - "unzip -o terraform.zip"
+      - "mv terraform /bin"
+      - "rm terraform.zip"
+
+  build:
+    commands:
+      - echo Terraform Plan started on `date`
+      - cd terraform
+      - ./terraform_init_$TARGET_ENV.sh
+      - terraform plan --var-file=./config/$TARGET_ENV/$TARGET_ENV.tfvars -no-color -lock=false -out $TARGET_ENV.tfplan
+
+  post_build:
+    commands:
+      - ls -lsa
+      - pwd
+
+artifacts:
+  files:
+    - $TARGET_ENV.tfplan
