@@ -1,0 +1,16 @@
+version: 0.2
+
+env:
+  variables:
+    CODE_SRC_DIR: "."
+
+phases:
+  build:
+    commands:
+      - |
+        APP_BUCKET=$(aws ssm get-parameter --name APP_BUCKET --region=ap-southeast-1 --output text --query Parameter.Value)
+        echo $APP_BUCKET
+        aws s3 cp ApplicationLayer s3://$APP_BUCKET/ApplicationLayer/ --recursive
+        WEB_BUCKET=$(aws ssm get-parameter --name WEB_BUCKET --region=ap-southeast-1 --output text --query Parameter.Value)
+        echo $WEB_BUCKET
+        aws s3 cp WebLayer s3://$WEB_BUCKET/WebLayer/ --recursive

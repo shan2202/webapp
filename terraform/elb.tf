@@ -37,7 +37,7 @@ resource "aws_lb_listener" "app_listener" {
 
   for_each          = { for k, v in var.load_balancer.services : k => v }
   load_balancer_arn = aws_lb.app_lb[each.key].arn
-  port              = each.value.port
+  port              = each.value.public_port
   protocol          = each.value.protocol
 
   default_action {
