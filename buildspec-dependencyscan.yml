@@ -8,6 +8,7 @@ phases:
     runtime-versions:
       nodejs: latest
     commands:
+      - npm install -g snyk
       - npm install snyk-to-html -g
       - snyk config set api=$SNYK_TOKEN
 
