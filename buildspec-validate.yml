@@ -21,8 +21,9 @@ phases:
     commands:
       - "curl -s -qL -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
       - ls
-      - "unzip -o /tmp/terraform.zip"
-      - "mv /tmp/terraform /bin"
+      - cd /tmp
+      - "unzip -o terraform.zip"
+      - "mv terraform /bin"
       - "rm terraform.zip"
       - "yum update -y"
       - "yum install -y curl jq awscli"
