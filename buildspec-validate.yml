@@ -25,13 +25,10 @@ phases:
       - "unzip -o terraform.zip"
       - "mv terraform /bin"
       - "rm terraform.zip"
-      - "yum update -y"
-      - "yum install -y curl jq awscli"
       - "pip3 install checkov"
-      - "yum install -y golang"
       - "wget -q -O tfsec https://github.com/aquasecurity/tfsec/releases/download/${TFSEC_VERSION}/tfsec-linux-amd64"
       - "chmod +x ./tfsec"
-      - "mv ./tfsec /usr/local/bin/tfsec"
+      - "mv tfsec /usr/local/bin/tfsec"
   build:
     commands:
       - "cd ${CODEBUILD_SRC_DIR}/${CODE_SRC_DIR}"
