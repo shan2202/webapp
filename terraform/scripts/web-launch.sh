@@ -8,7 +8,7 @@ cd ~/
 aws s3 cp s3://$WEB_BUCKET/WebLayer/ /home/ec2-user/WebLayer --recursive
 cd /home/ec2-user/WebLayer/
 pip3 install -r requirements.txt
-nohup /usr/local/bin/gunicorn -b localhost:8000 app:app &
+nohup /usr/local/bin/gunicorn -b 0.0.0.0:8000 app:app &
 sudo amazon-linux-extras install nginx1 -y
 sudo systemctl start nginx
 sudo systemctl enable nginx
