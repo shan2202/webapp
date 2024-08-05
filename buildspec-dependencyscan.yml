@@ -5,9 +5,12 @@ env:
     SNYK_ORG: scb/dev/snyk:Organization
 phases:
   install:
-    - npm install -g snyk
-    - npm install snyk-to-html -g
-    - snyk config set api=$SNYK_TOKEN
+    runtime-versions:
+      nodejs: latest
+    commands:
+      - npm install -g snyk
+      - npm install snyk-to-html -g
+      - snyk config set api=$SNYK_TOKEN
 
   build:
     - snyk test --org=$SNYK_ORG --project-name=webapp --json | snyk-to-html -o reports/results-opensource.html

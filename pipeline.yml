@@ -315,7 +315,7 @@ Resources:
       ServiceRole: !Ref CodeBuildExecutionRole
       Source:
         Type: CODEPIPELINE
-        BuildSpec: buildspec-infra.yaml
+        BuildSpec: buildspec-infra.yml
 
   # Create the BuildProject with required Build information
   InfraValidateProject:
@@ -342,7 +342,7 @@ Resources:
       ServiceRole: !Ref CodeBuildExecutionRole
       Source:
         Type: CODEPIPELINE
-        BuildSpec: buildspec-validate.yaml
+        BuildSpec: buildspec-validate.yml
 
   DependencyScanProject:
     Type: AWS::CodeBuild::Project
@@ -368,7 +368,7 @@ Resources:
       ServiceRole: !Ref CodeBuildExecutionRole
       Source:
         Type: CODEPIPELINE
-        BuildSpec: buildspec-dependencyscan.yaml
+        BuildSpec: buildspec-dependencyscan.yml
 
   SASTScanProject:
     Type: AWS::CodeBuild::Project
@@ -394,7 +394,7 @@ Resources:
       ServiceRole: !Ref CodeBuildExecutionRole
       Source:
         Type: CODEPIPELINE
-        BuildSpec: buildspec-sast.yaml
+        BuildSpec: buildspec-sast.yml
 
   SecretScanProject:
     Type: AWS::CodeBuild::Project
@@ -420,7 +420,7 @@ Resources:
       ServiceRole: !Ref CodeBuildExecutionRole
       Source:
         Type: CODEPIPELINE
-        BuildSpec: buildspec-secretscan.yaml
+        BuildSpec: buildspec-secretscan.yml
 
   AppDeployProject:
     Type: AWS::CodeBuild::Project
@@ -446,7 +446,7 @@ Resources:
       ServiceRole: !Ref CodeBuildExecutionRole
       Source:
         Type: CODEPIPELINE
-        BuildSpec: buildspec-deploy.yaml
+        BuildSpec: buildspec-deploy.yml
   InfraDeployProject:
     Type: AWS::CodeBuild::Project
     Properties: 
@@ -469,7 +469,7 @@ Resources:
       ServiceRole: !Ref CodeBuildExecutionRole
       Source:
         Type: CODEPIPELINE
-        BuildSpec: buildspec-deploy-infra.yaml
+        BuildSpec: buildspec-deploy-infra.yml
 
   AppBuildProject:
     Type: AWS::CodeBuild::Project

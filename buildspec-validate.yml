@@ -20,6 +20,8 @@ phases:
       golang: 1.14
     commands:
       - "curl -s -qL -o terraform.zip https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+      - ls
+      - terraform --version
       - "unzip -o terraform.zip"
       - "mv terraform /bin"
       - "rm terraform.zip"
