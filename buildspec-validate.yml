@@ -2,7 +2,7 @@ version: 0.2
 
 env:
   variables:
-    CODE_SRC_DIR: "."
+    CODE_SRC_DIR: "terraform"
     SCRIPT_DIR: "scripts"
     TF_VERSION: "1.7.2"
     ENVIRONMENT: "dev"
