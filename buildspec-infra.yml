@@ -8,7 +8,8 @@ phases:
   pre_build:
     commands:
       - echo install Terraform...
-      - "curl -s -qL -o terraform.zip https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+      - "curl -s -qL -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+      - cd /tmp
       - "unzip -o terraform.zip"
       - "mv terraform /bin"
       - "rm terraform.zip"
@@ -27,4 +28,4 @@ phases:
 
 artifacts:
   files:
-    - $TARGET_ENV.tfplan
+    - output_plan_$TARGET_ENV.tfplan
