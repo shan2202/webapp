@@ -52,16 +52,17 @@ Parameters:
     Description: Buildspec file to use for the build
     Type: String
     Default: buildspec_app.yml
-  WebBuildSpecFile:
-    Description: Buildspec file to use for the static asset build
-    Type: String
-    Default: buildspec_web.yml
   BuildNotificationEmail:
     Description: Email ID to which the build notifications has to be sent
     Type: String
   ApprovalNotificationEmail:
     Description: Email ID to which the approval notifications has to be sent
     Type: String
+  SkipDbBackup:
+    Description: Skip DB snapshot for a specific environment in the DBMig build
+    Type: String
+    Default: true
+
 
 Conditions:
   isDev: !Equals [!Ref Stage, dev]
@@ -343,7 +344,6 @@ Resources:
         Type: CODEPIPELINE
         BuildSpec: buildspec-validate.yaml
 
-  # Build AppAssets on Dev and Qa only
   AppDeployProject:
     Type: AWS::CodeBuild::Project
     Properties: 
@@ -359,14 +359,40 @@ Resources:
         PrivilegedMode: True
         Type: LINUX_CONTAINER
         EnvironmentVariables:
-          - Name: ROLE
-            Value: !Sub ${ProjectName}-CodeBuildRole
           - Name: TARGET_ENV
             Value: !Ref Stage
+          - Name: PROJECT_NAME
+            Value: !Ref ProjectName
+          - Name: SKIP_DB_SNAPSHOT
+            Value: !Ref SkipDbBackup
       ServiceRole: !Ref CodeBuildExecutionRole
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec-deploy.yaml
+  # Build AppAssets on Dev and Qa only
+  InfraDeployProject:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: !Sub ${AWS::StackName}-AppDeployment
+      Description: !Ref ProjectName
+      EncryptionKey: !Ref PipelineKMSKey
+      Artifacts: 
+        Type: CODEPIPELINE
+      Environment: 
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: True
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: TARGET_ENV
+            Value: !Ref Stage
+          - Name: PROJECT_NAME
+            Value: !Ref ProjectName
+      ServiceRole: !Ref CodeBuildExecutionRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec-deploy-infra.yaml
 
   AppBuildProject:
     Type: AWS::CodeBuild::Project
@@ -387,26 +413,6 @@ Resources:
       Source:
         Type: CODEPIPELINE
         BuildSpec: !Ref AppBuildSpecFile
-
-  WebBuildProject:
-    Type: AWS::CodeBuild::Project
-    Properties: 
-      Artifacts: 
-        Type: CODEPIPELINE
-      Environment: 
-        ComputeType: BUILD_GENERAL1_LARGE
-        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
-        ImagePullCredentialsType: CODEBUILD
-        PrivilegedMode: True
-        Type: LINUX_CONTAINER
-        EnvironmentVariables:
-            - Name: PIPELINE_NAME
-              Value: !Sub ${AWS::StackName}      
-      Name: !Sub ${AWS::StackName}-WebBuild
-      ServiceRole: !Ref CodeBuildExecutionRole
-      Source:
-        Type: CODEPIPELINE
-        BuildSpec: !Ref WebBuildSpecFile
 
 
   # SNS Email topic for the BE Build pipeline
@@ -434,7 +440,6 @@ Resources:
             Resource: !Ref AutumnBuildSNSTopic
 
   AutumnApprovalSNSTopic:
-    Condition: isProd
     Type: AWS::SNS::Topic
     Properties:
       KmsMasterKeyId: !Ref PipelineKMSKey
@@ -444,7 +449,6 @@ Resources:
       TopicName: !Sub ${AWS::StackName}-approval-topic
   
   AutumnApprovalSNSTopicPolicy:
-    Condition: isProd
     Type: AWS::SNS::TopicPolicy
     Properties:
       Topics:
@@ -610,19 +614,6 @@ Resources:
             Configuration:
                 ProjectName: !Ref AppBuildProject
             RunOrder: 2
-          - Name: BuildWeb
-            ActionTypeId:
-              Category: Build
-              Owner: AWS
-              Version: 1
-              Provider: CodeBuild
-            OutputArtifacts:
-              - Name: build-output-artifacts-web
-            InputArtifacts:
-              - Name: source_output_artifacts
-            Configuration:
-                ProjectName: !Ref WebBuildProject
-            RunOrder: 2
         - Name: Deploy
           Actions:
           - Name: Approval
@@ -633,9 +624,9 @@ Resources:
               Provider: Manual
             Configuration:
               CustomData: Approval for Prod Deploy
-            NotificationArn: !Ref AutumnApprovalSNSTopic
+              NotificationArn: !Ref AutumnApprovalSNSTopic
             RunOrder: 1 
-          - Name: Deploy
+          - Name: InfraDeploy
             ActionTypeId:
               Category: Build
               Owner: AWS
@@ -648,6 +639,19 @@ Resources:
             Configuration:
               ProjectName: !Ref AppDeployProject
             RunOrder: 2
+          - Name: AppDeploy
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Version: 1
+              Provider: CodeBuild
+            OutputArtifacts:
+              - Name: deploy-output-artifacts-app
+            InputArtifacts:
+              - Name: build-output-artifacts-app
+            Configuration:
+              ProjectName: !Ref AppDeployProject
+            RunOrder: 3
 
       ArtifactStores: 
         -

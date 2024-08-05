@@ -1,0 +1,37 @@
+version: 0.2
+
+env:
+  variables:
+    CODE_SRC_DIR: "."
+
+phases:
+  build:
+    commands:
+        # DB backup using RDS snapshot backup
+      - DB_NAME=$(aws ssm get-parameter --name /$PROJECT_NAME/$TARGET_ENV/DBIDENTIFIER --region=ap-southeast-1 --output text --query Parameter.Value)
+      - |
+        if [[ $SKIP_DB_SNAPSHOT = false ]]
+        then
+            echo "Creating manual snapshot of ${DB_NAME}"
+            SNAPSHOT_ID=$(aws rds create-db-snapshot --db-snapshot-identifier pipeline-$PROJECT_NAME-$TARGET_ENV-snapshot-$NOW_DATE --db-instance-identifier $DB_NAME --query 'DBSnapshot.[DBSnapshotIdentifier]' --output text)
+        else
+            echo "Skipping Db snapshot"
+        fi
+
+      - |
+        while [[ $SKIP_DB_SNAPSHOT = false ]]
+        do
+            echo "Waiting for snapshot creation process to finish..."
+            aws rds wait db-snapshot-completed --db-snapshot-identifier $SNAPSHOT_ID
+            if echo $? == 0; then
+                echo "Snapshot has been succesfully created"
+                break
+            else 
+                echo "Snapshot failed to create" ; exit 1;
+            fi
+        done
+      # DB migration steps to be added here
+      - |
+        aws autoscaling start-instance-refresh --auto-scaling-group-name $PROJECT_NAME-$TARGET_ENV-app-asg-app --preferences '{"InstanceWarmup": 60, "MinHealthyPercentage": 100, "AutoRollback": true}'
+        aws autoscaling start-instance-refresh --auto-scaling-group-name $PROJECT_NAME-$TARGET_ENV-app-asg-web --preferences '{"InstanceWarmup": 60, "MinHealthyPercentage": 100, "AutoRollback": true}'
+        

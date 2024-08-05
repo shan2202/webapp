@@ -1,25 +1,16 @@
 version: 0.2
 
+env:
+  variables:
+    CODE_SRC_DIR: "."
+
 phases:
-  install:
-    runtime-versions:
-      nodejs: latest
-    commands:
-      - echo install pre_build requirements
-  pre_build:
-    commands:
-      - |
-        #!/bin/bash
-        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
-        source ~/.bashrc
-        nvm install 16
-        nvm use 16
-        npm install -g pm2
-  
   build:
     commands:
       - |
-        cd ~/
-        echo $APP_BUCKET_NAME
-        aws s3 cp app-tier s3://$APP_BUCKET_NAME/app-tier/ --recursive
-        
+        APP_BUCKET=$(aws ssm get-parameter --name APP_BUCKET --region=ap-southeast-1 --output text --query Parameter.Value)
+        echo $APP_BUCKET
+        aws s3 cp ApplicationLayer s3://$APP_BUCKET/ApplicationLayer/ --recursive
+        WEB_BUCKET=$(aws ssm get-parameter --name WEB_BUCKET --region=ap-southeast-1 --output text --query Parameter.Value)
+        echo $WEB_BUCKET
+        aws s3 cp WebLayer s3://$WEB_BUCKET/WebLayer/ --recursive

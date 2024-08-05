@@ -18,13 +18,10 @@ phases:
       - echo Terraform Plan started on `date`
       - cd terraform
       - ./terraform_init_$TARGET_ENV.sh
-      - terraform plan --var-file=./config/$TARGET_ENV/$TARGET_ENV.tfvars -no-color -lock=false -out output_plan_$TARGET_ENV.tfplan
+      - terraform workspace select $TARGET_ENV
+      - terraform apply ./output_plan_$TARGET_ENV.tfplan
 
   post_build:
     commands:
       - ls -lsa
       - pwd
-
-artifacts:
-  files:
-    - $TARGET_ENV.tfplan
