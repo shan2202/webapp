@@ -31,7 +31,4 @@ artifacts:
   files:
     - terraform/output_plan_$TARGET_ENV.tfplan
     - buildspec*.yml
-reports:
-  terraform-plan-reports:
-    files:
-    - "./terraform/output_plan_$TARGET_ENV.tfplan"
+    - '**/*'

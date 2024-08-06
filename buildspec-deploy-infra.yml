@@ -13,11 +13,12 @@ phases:
       - "unzip -o terraform.zip"
       - "mv terraform /bin"
       - "rm terraform.zip"
-      - cd -
+
 
   build:
     commands:
-      - echo Terraform Plan started on `date`
+      - echo Terraform apply started on `date`
+      - cd -
       - cd terraform
       - ./terraform_init_$TARGET_ENV.sh
       - terraform workspace select $TARGET_ENV
