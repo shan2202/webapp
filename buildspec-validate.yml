@@ -2,7 +2,7 @@ version: 0.2
 
 env:
   variables:
-    CODE_SRC_DIR: "."
+    CODE_SRC_DIR: "terraform"
     SCRIPT_DIR: "scripts"
     TF_VERSION: "1.7.2"
     ENVIRONMENT: "dev"
@@ -19,17 +19,16 @@ phases:
       python: 3.9
       golang: 1.14
     commands:
-      - "curl -s -qL -o terraform.zip https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+      - "curl -s -qL -o /tmp/terraform.zip https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip"
+      - ls
+      - cd /tmp
       - "unzip -o terraform.zip"
       - "mv terraform /bin"
       - "rm terraform.zip"
-      - "yum update -y"
-      - "yum install -y curl jq awscli"
       - "pip3 install checkov"
-      - "yum install -y golang"
       - "wget -q -O tfsec https://github.com/aquasecurity/tfsec/releases/download/${TFSEC_VERSION}/tfsec-linux-amd64"
       - "chmod +x ./tfsec"
-      - "mv ./tfsec /usr/local/bin/tfsec"
+      - "mv tfsec /usr/local/bin/tfsec"
   build:
     commands:
       - "cd ${CODEBUILD_SRC_DIR}/${CODE_SRC_DIR}"

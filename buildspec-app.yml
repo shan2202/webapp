@@ -14,3 +14,7 @@ phases:
         WEB_BUCKET=$(aws ssm get-parameter --name WEB_BUCKET --region=ap-southeast-1 --output text --query Parameter.Value)
         echo $WEB_BUCKET
         aws s3 cp WebLayer s3://$WEB_BUCKET/WebLayer/ --recursive
+
+artifacts:
+  files:
+    - '**/*'

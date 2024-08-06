@@ -32,6 +32,6 @@ phases:
         done
       # DB migration steps to be added here
       - |
-        aws autoscaling start-instance-refresh --auto-scaling-group-name $PROJECT_NAME-$TARGET_ENV-app-asg-app --preferences '{"InstanceWarmup": 60, "MinHealthyPercentage": 100, "AutoRollback": true}'
-        aws autoscaling start-instance-refresh --auto-scaling-group-name $PROJECT_NAME-$TARGET_ENV-app-asg-web --preferences '{"InstanceWarmup": 60, "MinHealthyPercentage": 100, "AutoRollback": true}'
+        aws autoscaling start-instance-refresh --auto-scaling-group-name $PROJECT_NAME-$TARGET_ENV-app-asg-app --preferences '{"InstanceWarmup": 60, "MinHealthyPercentage": 100}'
+        aws autoscaling start-instance-refresh --auto-scaling-group-name $PROJECT_NAME-$TARGET_ENV-app-asg-web --preferences '{"InstanceWarmup": 60, "MinHealthyPercentage": 100}'
         
