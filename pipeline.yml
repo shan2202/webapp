@@ -62,6 +62,10 @@ Parameters:
     Description: Skip DB snapshot for a specific environment in the DBMig build
     Type: String
     Default: true
+  EnableSecurityScan:
+    Description: Enable security scan via pipeline
+    Type: String
+    Default: false
 
 
 Conditions:
@@ -71,6 +75,7 @@ Conditions:
   isProd: !Equals [!Ref Stage, prod]
   isQa: !Equals [!Ref Stage, qa]
   isAlpha: !Equals [!Ref Stage, alpha]
+  isSecurityScan: !Equals [!Ref EnableSecurityScan, true]
 
 Resources:
   # Create Access Role for CodePipeLine
@@ -273,8 +278,13 @@ Resources:
               - codepipeline:GetPipelineExecution
               - codepipeline:ListPipelineExecutions
               - codepipeline:StartPipelineExecution
-              - codebuild:CreateReportGroup
+              - codebuild:*
               - ssm:*
+              - s3:*
+              - dynamodb:*
+              - elasticloadbalancing:*
+              - iam:*
+              - rds:*
             Resource: '*'
           - Effect: Allow
             Action:
@@ -381,7 +391,7 @@ Resources:
         Type: CODEPIPELINE
       Environment: 
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/standard:4.0
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:4.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: True
         Type: LINUX_CONTAINER
@@ -400,14 +410,14 @@ Resources:
   SecretScanProject:
     Type: AWS::CodeBuild::Project
     Properties: 
-      Name: !Sub ${AWS::StackName}-SecretScan
+      Name: !Sub ${AWS::StackName}-SecretScanner
       Description: !Ref ProjectName
       EncryptionKey: !Ref PipelineKMSKey
       Artifacts: 
         Type: CODEPIPELINE
       Environment: 
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/standard:4.0
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:4.0
         ImagePullCredentialsType: CODEBUILD
         PrivilegedMode: True
         Type: LINUX_CONTAINER
@@ -648,60 +658,63 @@ Resources:
             RunOrder: 1
             OutputArtifacts:
               - Name: source_output_artifacts
-        - Name: SecurityScans
-          Actions:
-          - Name: IaCSecurityScan
-            ActionTypeId:
-              Category: Build
-              Owner: AWS
-              Version: 1
-              Provider: CodeBuild
-            OutputArtifacts:
-              - Name: infra-validate-output-artifacts
-            InputArtifacts:
-              - Name: source_output_artifacts
-            Configuration:
-              ProjectName: !Ref InfraValidateProject
-            RunOrder: 1
-          - Name: DependencyScan
-            ActionTypeId:
-              Category: Build
-              Owner: AWS
-              Version: 1
-              Provider: CodeBuild
-            OutputArtifacts:
-              - Name: dependency-output-artifacts
-            InputArtifacts:
-              - Name: source_output_artifacts
-            Configuration:
-              ProjectName: !Ref DependencyScanProject
-            RunOrder: 1   
-          - Name: SASTScan
-            ActionTypeId:
-              Category: Build
-              Owner: AWS
-              Version: 1
-              Provider: CodeBuild
-            OutputArtifacts:
-              - Name: sast-scan-output-artifacts
-            InputArtifacts:
-              - Name: source_output_artifacts
-            Configuration:
-              ProjectName: !Ref SASTScanProject
-            RunOrder: 1     
-          - Name: SecretScanning
-            ActionTypeId:
-              Category: Build
-              Owner: AWS
-              Version: 1
-              Provider: CodeBuild
-            OutputArtifacts:
-              - Name: secret-scan-output-artifacts
-            InputArtifacts:
-              - Name: source_output_artifacts
-            Configuration:
-              ProjectName: !Ref SecretScanProject
-            RunOrder: 1    
+        - !If 
+          - isSecurityScan
+          - Name: SecurityScans
+            Actions:
+            - Name: IaCSecurityScan
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              OutputArtifacts:
+                - Name: infra-validate-output-artifacts
+              InputArtifacts:
+                - Name: source_output_artifacts
+              Configuration:
+                ProjectName: !Ref InfraValidateProject
+              RunOrder: 1
+            - Name: DependencyScan
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              OutputArtifacts:
+                - Name: dependency-output-artifacts
+              InputArtifacts:
+                - Name: source_output_artifacts
+              Configuration:
+                ProjectName: !Ref DependencyScanProject
+              RunOrder: 1   
+            - Name: SASTScan
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              OutputArtifacts:
+                - Name: sast-scan-output-artifacts
+              InputArtifacts:
+                - Name: source_output_artifacts
+              Configuration:
+                ProjectName: !Ref SASTScanProject
+              RunOrder: 1     
+            - Name: SecretScanning
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              OutputArtifacts:
+                - Name: secret-scan-output-artifacts
+              InputArtifacts:
+                - Name: source_output_artifacts
+              Configuration:
+                ProjectName: !Ref SecretScanProject
+              RunOrder: 1 
+          - !Ref AWS::NoValue   
         # Create build from the source code and upload output-artifacts to S3 Bucket
         - Name: Build
           Actions:
@@ -752,7 +765,7 @@ Resources:
             OutputArtifacts:
               - Name: deploy-infra-output-artifacts-app
             InputArtifacts:
-              - Name: build-output-artifacts-app
+              - Name: infra-build-output-artifacts
             Configuration:
               ProjectName: !Ref InfraDeployProject
             RunOrder: 2
