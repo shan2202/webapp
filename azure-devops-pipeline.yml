@@ -1,0 +1,12 @@
+trigger:
+- scb-task
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  infra-build: true
+
+steps:
+- script: echo "my first command"
+
